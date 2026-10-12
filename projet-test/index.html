@@ -72,9 +72,80 @@
     </main>
   </div>
   <script>
-    document.getElementById("btn").addEventListener("click", function () {
+    var COLORS = ["#3CD200", "#1D096E", "#2E9E00", "#4A3AA0", "#9BE87F"];
+
+    function confetti(x, y) {
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+      var canvas = document.createElement("canvas");
+      canvas.setAttribute("aria-hidden", "true");
+      canvas.style.cssText = "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999";
+      var dpr = window.devicePixelRatio || 1;
+      var W = window.innerWidth, H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      document.body.appendChild(canvas);
+      var ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+
+      var pieces = [];
+      for (var i = 0; i < 140; i++) {
+        var angle = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+        var speed = 6 + Math.random() * 9;
+        pieces.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 6 + Math.random() * 6,
+          rot: Math.random() * Math.PI * 2,
+          vr: (Math.random() - 0.5) * 0.4,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          round: Math.random() < 0.3
+        });
+      }
+
+      var DURATION = 2800;
+      var start = null;
+
+      function frame(t) {
+        if (start === null) start = t;
+        var elapsed = t - start;
+        ctx.clearRect(0, 0, W, H);
+        var fade = elapsed > DURATION - 700 ? Math.max(0, (DURATION - elapsed) / 700) : 1;
+        pieces.forEach(function (p) {
+          p.vy += 0.32;
+          p.vx *= 0.99;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vr;
+          ctx.save();
+          ctx.globalAlpha = fade;
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.color;
+          if (p.round) {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+          }
+          ctx.restore();
+        });
+        if (elapsed < DURATION) {
+          requestAnimationFrame(frame);
+        } else if (canvas.parentNode) {
+          canvas.parentNode.removeChild(canvas);
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById("btn").addEventListener("click", function (e) {
       document.getElementById("date").textContent =
         "Test réussi le " + new Date().toLocaleString("fr-FR");
+      var r = e.currentTarget.getBoundingClientRect();
+      confetti(r.left + r.width / 2, r.top + r.height / 2);
     });
   </script>
 </body>
