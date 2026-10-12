@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le Tic-Tac-Toe (Morpion)</title>
+  <style>
+    :root {
+      --rs-green: #3CD200;
+      --rs-green-dark: #2E9E00;
+      --rs-blue: #1D096E;
+      --rs-blue-light: #4A3AA0;
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --muted: #5b5675;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--rs-blue);
+      font-family: Wotfard, Arial, sans-serif;
+      padding: 24px 16px 48px;
+    }
+    .back {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--rs-blue);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back:hover { text-decoration: underline; }
+    .wrap { max-width: 460px; margin: 0 auto; }
+    main {
+      background: var(--card);
+      border-top: 6px solid var(--rs-green);
+      border-radius: 12px;
+      padding: 28px 24px;
+      box-shadow: 0 4px 24px rgba(29, 9, 110, 0.12);
+      text-align: center;
+    }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    .sub { margin: 0 0 16px; color: var(--muted); font-size: 0.95rem; }
+    .modes { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+    .modes button {
+      background: #fff;
+      color: var(--rs-blue);
+      border: 2px solid var(--rs-blue);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .modes button.on { background: var(--rs-blue); color: #fff; }
+    #status { min-height: 1.6rem; margin: 0 0 12px; font-weight: 700; }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 0 auto 16px;
+      max-width: 330px;
+    }
+    .cell {
+      aspect-ratio: 1;
+      background: #eef0f6;
+      border: 0;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 3rem;
+      font-weight: 800;
+      cursor: pointer;
+      color: var(--rs-blue);
+    }
+    .cell:hover:not(:disabled) { background: #e1e4f0; }
+    .cell.x { color: var(--rs-blue); }
+    .cell.o { color: var(--rs-green-dark); }
+    .cell.win { background: var(--rs-green); color: var(--rs-blue); }
+    .cell:disabled { cursor: default; }
+    .scores {
+      display: flex;
+      justify-content: space-around;
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .scores strong { display: block; font-size: 1.4rem; color: var(--rs-blue); }
+    .primary {
+      background: var(--rs-green);
+      color: var(--rs-blue);
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .primary:hover { background: var(--rs-blue); color: #fff; }
+    button:focus-visible { outline: 3px solid var(--rs-green); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="../">&larr; Retour aux projets</a>
+    <main>
+      <h1>Le Tic-Tac-Toe (Morpion)</h1>
+      <p class="sub">Alignez trois symboles pour gagner.</p>
+
+      <div class="modes" role="group" aria-label="Mode de jeu">
+        <button type="button" id="mode-cpu" class="on">Contre l'ordinateur</button>
+        <button type="button" id="mode-2p">À deux joueurs</button>
+      </div>
+
+      <div id="status" role="status"></div>
+      <div id="board"></div>
+
+      <div class="scores">
+        <div><strong id="s-x">0</strong><span id="l-x">Vous (X)</span></div>
+        <div><strong id="s-n">0</strong><span>Nuls</span></div>
+        <div><strong id="s-o">0</strong><span id="l-o">Ordinateur (O)</span></div>
+      </div>
+
+      <button class="primary" id="new" type="button">Nouvelle partie</button>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      var board, turn, over, locked, mode = "cpu";
+      var scores = { X: 0, O: 0, N: 0 };
+      var boardEl = document.getElementById("board");
+      var statusEl = document.getElementById("status");
+      var cells = [];
+
+      for (var i = 0; i < 9; i++) {
+        (function (idx) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "cell";
+          b.setAttribute("aria-label", "Case " + (idx + 1));
+          b.addEventListener("click", function () { play(idx); });
+          boardEl.appendChild(b);
+          cells.push(b);
+        })(i);
+      }
+
+      function winner(b) {
+        for (var k = 0; k < LINES.length; k++) {
+          var l = LINES[k];
+          if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) {
+            return { p: b[l[0]], line: l };
+          }
+        }
+        return null;
+      }
+
+      function minimax(b, isO, depth) {
+        var w = winner(b);
+        if (w) return w.p === "O" ? 10 - depth : depth - 10;
+        if (b.every(Boolean)) return 0;
+        var best = isO ? -Infinity : Infinity;
+        for (var k = 0; k < 9; k++) {
+          if (!b[k]) {
+            b[k] = isO ? "O" : "X";
+            var v = minimax(b, !isO, depth + 1);
+            b[k] = null;
+            best = isO ? Math.max(best, v) : Math.min(best, v);
+          }
+        }
+        return best;
+      }
+
+      function cpuMove() {
+        var bestV = -Infinity, bestK = -1;
+        for (var k = 0; k < 9; k++) {
+          if (!board[k]) {
+            board[k] = "O";
+            var v = minimax(board, false, 1);
+            board[k] = null;
+            if (v > bestV) { bestV = v; bestK = k; }
+          }
+        }
+        return bestK;
+      }
+
+      function render() {
+        var w = winner(board);
+        cells.forEach(function (c, k) {
+          c.textContent = board[k] || "";
+          c.className = "cell" + (board[k] ? " " + board[k].toLowerCase() : "") +
+            (w && w.line.indexOf(k) !== -1 ? " win" : "");
+          c.disabled = over || !!board[k] || locked;
+        });
+        if (w) {
+          statusEl.textContent = (mode === "cpu" && w.p === "O") ? "L'ordinateur gagne." :
+            (mode === "cpu" ? "Bravo, vous gagnez !" : "Le joueur " + w.p + " gagne !");
+        } else if (over) {
+          statusEl.textContent = "Match nul.";
+        } else {
+          statusEl.textContent = (mode === "cpu")
+            ? (turn === "X" ? "À vous de jouer (X)" : "L'ordinateur réfléchit...")
+            : "Au tour du joueur " + turn;
+        }
+        document.getElementById("s-x").textContent = scores.X;
+        document.getElementById("s-o").textContent = scores.O;
+        document.getElementById("s-n").textContent = scores.N;
+      }
+
+      function finish() {
+        var w = winner(board);
+        if (w) { scores[w.p] += 1; over = true; }
+        else if (board.every(Boolean)) { scores.N += 1; over = true; }
+        return over;
+      }
+
+      function play(idx) {
+        if (over || locked || board[idx]) return;
+        board[idx] = turn;
+        if (finish()) { render(); return; }
+        turn = turn === "X" ? "O" : "X";
+        if (mode === "cpu" && turn === "O") {
+          locked = true;
+          render();
+          setTimeout(function () {
+            var k = cpuMove();
+            board[k] = "O";
+            locked = false;
+            if (!finish()) turn = "X";
+            render();
+          }, 450);
+          return;
+        }
+        render();
+      }
+
+      function newGame() {
+        board = new Array(9).fill(null);
+        turn = "X";
+        over = false;
+        locked = false;
+        render();
+      }
+
+      function setMode(m) {
+        mode = m;
+        scores = { X: 0, O: 0, N: 0 };
+        document.getElementById("mode-cpu").classList.toggle("on", m === "cpu");
+        document.getElementById("mode-2p").classList.toggle("on", m === "2p");
+        document.getElementById("l-x").textContent = m === "cpu" ? "Vous (X)" : "Joueur X";
+        document.getElementById("l-o").textContent = m === "cpu" ? "Ordinateur (O)" : "Joueur O";
+        newGame();
+      }
+
+      document.getElementById("new").addEventListener("click", newGame);
+      document.getElementById("mode-cpu").addEventListener("click", function () { setMode("cpu"); });
+      document.getElementById("mode-2p").addEventListener("click", function () { setMode("2p"); });
+
+      setMode("cpu");
+    })();
+  </script>
+</body>
+</html>
