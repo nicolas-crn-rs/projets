@@ -89,6 +89,36 @@
       cursor: pointer;
     }
     .primary:hover { background: var(--rs-blue); color: #fff; }
+    .secondary {
+      background: #fff;
+      color: var(--rs-blue);
+      border: 2px solid var(--rs-blue);
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .secondary:hover { background: var(--rs-blue); color: #fff; }
+    .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    #custom {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e3e1ee;
+    }
+    #custom p { margin: 0 0 10px; color: var(--muted); font-size: 0.9rem; }
+    #custom .row { display: flex; gap: 8px; justify-content: center; }
+    #custom input {
+      flex: 1;
+      max-width: 260px;
+      padding: 10px 12px;
+      border: 2px solid var(--rs-blue);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      color: var(--rs-blue);
+    }
+    #custom-error { min-height: 1.2rem; margin: 8px 0 0; color: #b3261e; font-size: 0.9rem; }
     button:focus-visible { outline: 3px solid var(--rs-green); outline-offset: 2px; }
   </style>
 </head>
@@ -116,7 +146,19 @@
       <div id="word" aria-live="polite"></div>
       <div id="status" role="status"></div>
       <div id="keys" aria-label="Clavier"></div>
-      <button class="primary" id="new" type="button">Nouvelle partie</button>
+      <div class="actions">
+        <button class="primary" id="new" type="button">Nouvelle partie</button>
+        <button class="secondary" id="choose" type="button" aria-expanded="false" aria-controls="custom">Choisir mon mot</button>
+      </div>
+
+      <div id="custom" hidden>
+        <p>Un joueur saisit un mot (il reste masqué), l'autre le devine.</p>
+        <div class="row">
+          <input id="custom-word" type="password" maxlength="20" placeholder="Votre mot" aria-label="Mot à deviner" autocomplete="off">
+          <button class="primary" id="custom-ok" type="button">Valider</button>
+        </div>
+        <p id="custom-error" role="alert"></p>
+      </div>
     </main>
   </div>
 
@@ -181,16 +223,59 @@
         render();
       }
 
-      function newGame() {
-        word = WORDS[Math.floor(Math.random() * WORDS.length)];
+      function newGame(customWord) {
+        word = customWord || WORDS[Math.floor(Math.random() * WORDS.length)];
         guessed = new Set();
         wrong = 0;
         buildKeyboard();
         render();
       }
 
-      document.getElementById("new").addEventListener("click", newGame);
+      var customForm = document.getElementById("custom");
+      var customInput = document.getElementById("custom-word");
+      var customError = document.getElementById("custom-error");
+      var chooseBtn = document.getElementById("choose");
+
+      function closeCustom() {
+        customForm.hidden = true;
+        chooseBtn.setAttribute("aria-expanded", "false");
+        customInput.value = "";
+        customError.textContent = "";
+      }
+
+      document.getElementById("new").addEventListener("click", function () {
+        closeCustom();
+        newGame();
+      });
+
+      chooseBtn.addEventListener("click", function () {
+        var open = customForm.hidden;
+        customForm.hidden = !open;
+        chooseBtn.setAttribute("aria-expanded", String(open));
+        if (open) customInput.focus(); else closeCustom();
+      });
+
+      customInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); validateCustom(); }
+      });
+      document.getElementById("custom-ok").addEventListener("click", validateCustom);
+
+      function validateCustom() {
+        var w = customInput.value.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+        if (!/^[A-Z]+$/.test(w)) {
+          customError.textContent = "Utilisez uniquement des lettres, sans espace ni chiffre.";
+          return;
+        }
+        if (w.length < 3) {
+          customError.textContent = "Le mot doit contenir au moins 3 lettres.";
+          return;
+        }
+        closeCustom();
+        newGame(w);
+      }
+
       document.addEventListener("keydown", function (e) {
+        if (e.target && e.target.tagName === "INPUT") return;
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         var k = e.key.normalize("NFD").replace(/[̀-ͯ]/g, "");
         if (/^[a-zA-Z]$/.test(k)) guess(k.toUpperCase());
