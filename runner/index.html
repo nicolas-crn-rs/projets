@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Répar'Runner</title>
+<style>
+  :root {
+    --navy: #1D096E;
+    --green: #3CD200;
+    --ground: #1D096E;
+    --text: #1D096E;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #F4FBF2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    overflow: hidden;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  #hud {
+    width: 640px;
+    max-width: 90vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    user-select: none;
+  }
+  #hud .brand {
+    color: var(--green);
+    font-weight: 800;
+  }
+  canvas {
+    background: #EAF6E6;
+    border-bottom: 3px solid var(--navy);
+    border-radius: 6px;
+    max-width: 90vw;
+    touch-action: manipulation;
+  }
+  #hint {
+    color: var(--text);
+    opacity: 0.65;
+    font-size: 12px;
+    user-select: none;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <span class="brand">Répar'Runner</span>
+    <span id="scores">HI 0000 &nbsp; 0000</span>
+  </div>
+  <canvas id="game" width="640" height="220"></canvas>
+  <div id="hint">Espace / Clic pour sauter — flèche bas pour se baisser</div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoresEl = document.getElementById('scores');
+  const W = canvas.width, H = canvas.height;
+  const GROUND_Y = 185;
+
+  const COLORS = {
+    navy: '#1D096E',
+    navyLight: '#4A3AA0',
+    pants: '#150766',
+    green: '#3CD200',
+    greenDark: '#2E9E00',
+    skin: '#E8B98A',
+    skinDark: '#D9A876',
+    rust: '#A85B2E',
+    metal: '#8B929B',
+    metalLight: '#AEB4BC',
+    metalDark: '#5B616B',
+    frame: '#C9C2B2',
+    spark: '#F2C94C',
+    boot: '#2B2E33'
+  };
+
+  let best = 0;
+  try { best = parseInt(localStorage.getItem('reparstores_best_score') || '0', 10) || 0; } catch (e) { best = 0; }
+
+  const tech = {
+    x: 60, y: 0, w: 34, h: 46,
+    dy: 0,
+    gravity: 0.0018,
+    jumpForce: -0.62,
+    grounded: true,
+    ducking: false,
+    legFrame: 0,
+    legTimer: 0
+  };
+  tech.y = GROUND_Y - tech.h;
+
+  let obstacles = [];
+  let rainDrops = [];
+  let speed = 0.32;
+  const baseSpeed = 0.32;
+  let elapsed = 0;
+  let score = 0;
+  let running = false;
+  let gameOver = false;
+  let lastTime = 0;
+  let spawnTimer = 0;
+  let nextSpawn = 900;
+  let rainTimer = 0;
+  let weatherStage = 0; // 0 soleil, 1 nuageux, 2 orage
+
+  function resetGame() {
+    tech.y = GROUND_Y - tech.h;
+    tech.dy = 0;
+    tech.grounded = true;
+    tech.ducking = false;
+    obstacles = [];
+    rainDrops = [];
+    speed = baseSpeed;
+    elapsed = 0;
+    score = 0;
+    spawnTimer = 0;
+    nextSpawn = 900;
+    gameOver = false;
+    running = true;
+    weatherStage = 0;
+  }
+
+  function jump() {
+    if (!running || gameOver) { resetGame(); return; }
+    if (tech.grounded && !tech.ducking) {
+      tech.dy = tech.jumpForce;
+      tech.grounded = false;
+    }
+  }
+
+  function setDuck(state) {
+    if (tech.grounded) tech.ducking = state;
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); jump(); }
+    else if (e.code === 'ArrowDown') { e.preventDefault(); setDuck(true); }
+  });
+  window.addEventListener('keyup', (e) => { if (e.code === 'ArrowDown') setDuck(false); });
+  canvas.addEventListener('mousedown', jump);
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, { passive: false });
+
+  function spawnObstacle() {
+    const isSpark = score > 250 && Math.random() < 0.32;
+    if (isSpark) {
+      const heights = [GROUND_Y - 26, GROUND_Y - 58, GROUND_Y - 90];
+      obstacles.push({
+        type: 'spark',
+        x: W + 20,
+        y: heights[Math.floor(Math.random() * heights.length)],
+        w: 26, h: 22,
+        flicker: 0
+      });
+    } else {
+      const cluster = 1 + (Math.random() < 0.28 ? 1 : 0);
+      let ox = W + 20;
+      for (let i = 0; i < cluster; i++) {
+        const w = 36 + Math.floor(Math.random() * 16);
+        const h = 46 + Math.floor(Math.random() * 20);
+        const rustSpots = [];
+        const rustCount = 2 + Math.floor(Math.random() * 2);
+        for (let r = 0; r < rustCount; r++) {
+          rustSpots.push({
+            dx: 3 + Math.random() * (w - 6),
+            dy: 3 + Math.random() * (h - 6),
+            rr: 1.5 + Math.random() * 1.8
+          });
+        }
+        const bentSide = Math.random() < 0.5 ? -1 : 1;
+        obstacles.push({
+          type: 'shutter',
+          x: ox, y: GROUND_Y - h,
+          w, h,
+          rustSpots,
+          bentSide
+        });
+        ox += w + 14;
+      }
+    }
+  }
+
+  function rectsOverlap(a, b) {
+    const pad = 4;
+    return (
+      a.x + pad < b.x + b.w - pad &&
+      a.x + a.w - pad > b.x + pad &&
+      a.y + pad < b.y + b.h - pad &&
+      a.y + a.h - pad > b.y + pad
+    );
+  }
+
+  function drawTechnician() {
+    const ducking = tech.ducking && tech.grounded;
+    const h = ducking ? tech.h * 0.62 : tech.h;
+    const y = ducking ? tech.y + (tech.h - h) : tech.y;
+    const w = ducking ? tech.w * 1.45 : tech.w;
+    const cx = tech.x + w / 2;
+
+    if (tech.grounded && running) {
+      tech.legTimer += 1;
+      if (tech.legTimer > 6) { tech.legFrame = 1 - tech.legFrame; tech.legTimer = 0; }
+    }
+
+    // legs (pantalon)
+    ctx.lineCap = 'round';
+    if (!ducking) {
+      ctx.strokeStyle = COLORS.pants;
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      if (tech.legFrame === 0) {
+        ctx.moveTo(cx - 5, y + h - 8); ctx.lineTo(cx - 10, y + h + 9);
+        ctx.moveTo(cx + 5, y + h - 8); ctx.lineTo(cx + 9, y + h + 3);
+      } else {
+        ctx.moveTo(cx - 5, y + h - 8); ctx.lineTo(cx - 9, y + h + 3);
+        ctx.moveTo(cx + 5, y + h - 8); ctx.lineTo(cx + 10, y + h + 9);
+      }
+      ctx.stroke();
+      // revers vert aux chevilles
+      ctx.strokeStyle = COLORS.green;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      if (tech.legFrame === 0) {
+        ctx.moveTo(cx - 10.5, y + h + 5); ctx.lineTo(cx - 9.5, y + h + 9);
+        ctx.moveTo(cx + 8.5, y + h - 1); ctx.lineTo(cx + 9.5, y + h + 3);
+      } else {
+        ctx.moveTo(cx - 9.5, y + h - 1); ctx.lineTo(cx - 8.5, y + h + 3);
+        ctx.moveTo(cx + 9.5, y + h + 5); ctx.lineTo(cx + 10.5, y + h + 9);
+      }
+      ctx.stroke();
+      ctx.fillStyle = COLORS.boot;
+      ctx.beginPath(); ctx.ellipse(cx - 9.5, y + h + 11, 5.5, 3.5, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx + 9, y + h + 5, 5.5, 3.5, 0, 0, 7); ctx.fill();
+    }
+
+    // torso (chemise)
+    ctx.fillStyle = COLORS.navy;
+    const torsoTop = ducking ? y + h * 0.15 : y + h * 0.3;
+    const torsoH = ducking ? h * 0.55 : h * 0.5;
+    roundRect(cx - w * 0.34, torsoTop, w * 0.68, torsoH, 6);
+    ctx.fill();
+
+    // ceinture
+    ctx.fillStyle = COLORS.green;
+    ctx.fillRect(cx - w * 0.32, torsoTop + torsoH * 0.68, w * 0.64, torsoH * 0.2);
+
+    if (!ducking) {
+      // bras arrière
+      ctx.strokeStyle = COLORS.navy;
+      ctx.lineWidth = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - w * 0.3, torsoTop + 3);
+      ctx.lineTo(cx - w * 0.5, torsoTop + torsoH * 0.55);
+      ctx.stroke();
+      ctx.strokeStyle = COLORS.green;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx - w * 0.44, torsoTop + torsoH * 0.42);
+      ctx.lineTo(cx - w * 0.5, torsoTop + torsoH * 0.55);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.skin;
+      ctx.beginPath(); ctx.arc(cx - w * 0.5, torsoTop + torsoH * 0.55, 3.6, 0, 7); ctx.fill();
+
+      // bras avant tenant la caisse à outils
+      const boxX = cx + w * 0.5;
+      const boxY = torsoTop + torsoH * 0.62;
+      ctx.strokeStyle = COLORS.navy;
+      ctx.lineWidth = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + w * 0.28, torsoTop + 3);
+      ctx.lineTo(boxX - 3, boxY - 3);
+      ctx.stroke();
+      ctx.strokeStyle = COLORS.green;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx + w * 0.4, torsoTop + torsoH * 0.28);
+      ctx.lineTo(boxX - 3, boxY - 3);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.skin;
+      ctx.beginPath(); ctx.arc(boxX - 3, boxY - 3, 3.6, 0, 7); ctx.fill();
+
+      // caisse à outils
+      ctx.fillStyle = COLORS.green;
+      roundRect(boxX - 1, boxY, 13, 10, 1.5);
+      ctx.fill();
+      ctx.strokeStyle = COLORS.greenDark;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = COLORS.greenDark;
+      ctx.fillRect(boxX - 1, boxY + 4, 13, 1.6);
+      ctx.strokeStyle = COLORS.metalDark;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(boxX + 5.5, boxY, 4.2, Math.PI, 0);
+      ctx.stroke();
+    }
+
+    // tête
+    ctx.fillStyle = COLORS.skin;
+    ctx.beginPath(); ctx.arc(cx, y + 9, 9, 0, 7); ctx.fill();
+    // visage
+    ctx.fillStyle = COLORS.navy;
+    ctx.beginPath(); ctx.arc(cx + 2.5, y + 9.5, 1.1, 0, 7); ctx.fill();
+    ctx.strokeStyle = COLORS.skinDark;
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(cx + 2.5, y + 13, 2, 0.15, Math.PI - 0.15); ctx.stroke();
+    // casquette
+    ctx.fillStyle = COLORS.green;
+    ctx.beginPath();
+    ctx.arc(cx, y + 6, 9.5, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = COLORS.greenDark;
+    ctx.fillRect(cx + 3, y + 4, 9, 3.5);
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawGround(offset) {
+    ctx.strokeStyle = COLORS.navy;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(W, GROUND_Y);
+    ctx.stroke();
+    ctx.fillStyle = COLORS.navyLight;
+    for (let i = 0; i < 32; i++) {
+      const x = ((i * 42) - (offset % 42) + W) % (W + 42) - 42;
+      ctx.fillRect(x, GROUND_Y + 4, 9, 2);
+    }
+  }
+
+  function drawObstacles() {
+    for (const o of obstacles) {
+      if (o.type === 'shutter') {
+        const post = o.w * 0.15;
+        const boxH = Math.max(6, o.h * 0.16);
+        const jamLeft = o.bentSide > 0 ? 0 : o.h * 0.24;
+        const jamRight = o.bentSide > 0 ? o.h * 0.24 : 0;
+        const sx = o.x + post;
+        const sw = o.w - post * 2;
+        const topY = o.y + boxH;
+        const groundY = o.y + o.h;
+        const leftBottom = groundY - jamLeft;
+        const rightBottom = groundY - jamRight;
+
+        // cadre
+        ctx.fillStyle = COLORS.frame;
+        ctx.fillRect(o.x, o.y, post, o.h);
+        ctx.fillRect(o.x + o.w - post, o.y, post, o.h);
+
+        // coffret
+        ctx.fillStyle = COLORS.frame;
+        roundRect(o.x, o.y, o.w, boxH, 2);
+        ctx.fill();
+        ctx.strokeStyle = COLORS.metalDark;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = COLORS.metalDark;
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(o.x, o.y + boxH - 2, o.w, 2);
+        ctx.globalAlpha = 1;
+
+        // lames (coincées de travers), clip sur le polygone
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(sx, topY);
+        ctx.lineTo(sx + sw, topY);
+        ctx.lineTo(sx + sw, rightBottom);
+        ctx.lineTo(sx, leftBottom);
+        ctx.closePath();
+        ctx.clip();
+
+        ctx.fillStyle = COLORS.metal;
+        ctx.fillRect(sx, topY, sw, o.h);
+
+        ctx.lineWidth = 1;
+        for (let ly = topY + 5; ly < groundY; ly += 5) {
+          ctx.strokeStyle = COLORS.metalDark;
+          ctx.globalAlpha = 0.45;
+          ctx.beginPath(); ctx.moveTo(sx, ly); ctx.lineTo(sx + sw, ly); ctx.stroke();
+          ctx.strokeStyle = COLORS.metalLight;
+          ctx.globalAlpha = 0.55;
+          ctx.beginPath(); ctx.moveTo(sx, ly - 2); ctx.lineTo(sx + sw, ly - 2); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        ctx.strokeStyle = COLORS.metalDark;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx, topY);
+        ctx.lineTo(sx + sw, topY);
+        ctx.lineTo(sx + sw, rightBottom);
+        ctx.lineTo(sx, leftBottom);
+        ctx.closePath();
+        ctx.stroke();
+
+        // interstice sombre côté coincé
+        ctx.fillStyle = COLORS.boot;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        if (o.bentSide > 0) {
+          ctx.moveTo(sx + sw, rightBottom);
+          ctx.lineTo(sx + sw, groundY);
+          ctx.lineTo(sx + sw * 0.45, groundY);
+        } else {
+          ctx.moveTo(sx, leftBottom);
+          ctx.lineTo(sx, groundY);
+          ctx.lineTo(sx + sw * 0.55, groundY);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // fissure
+        ctx.strokeStyle = '#3A3F46';
+        ctx.lineWidth = 1.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(sx + sw * 0.5, topY + 5);
+        ctx.lineTo(sx + sw * 0.66, topY + 13);
+        ctx.lineTo(sx + sw * 0.54, topY + 20);
+        ctx.stroke();
+
+        // rouille
+        ctx.fillStyle = COLORS.rust;
+        ctx.globalAlpha = 0.8;
+        for (const s of o.rustSpots) {
+          ctx.beginPath();
+          ctx.arc(sx + Math.min(s.dx, sw - 3), topY + Math.min(s.dy, o.h - boxH - 4), s.rr, 0, 7);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        o.flicker += 1;
+        ctx.fillStyle = COLORS.spark;
+        ctx.save();
+        ctx.translate(o.x + o.w / 2, o.y + o.h / 2);
+        if (o.flicker % 10 < 5) ctx.rotate(0.15); else ctx.rotate(-0.1);
+        ctx.beginPath();
+        ctx.moveTo(-4, -11); ctx.lineTo(4, -2); ctx.lineTo(-1, -1);
+        ctx.lineTo(5, 11); ctx.lineTo(-6, 1); ctx.lineTo(-1, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawWeather() {
+    if (weatherStage === 0) {
+      ctx.fillStyle = '#F5B942';
+      ctx.beginPath(); ctx.arc(W - 50, 36, 16, 0, 7); ctx.fill();
+    } else if (weatherStage === 1) {
+      ctx.fillStyle = '#C6CBD2';
+      cloud(W - 70, 34);
+    } else {
+      ctx.fillStyle = '#8B929B';
+      cloud(W - 70, 30);
+      rainTimer += 1;
+      if (rainTimer % 6 === 0 && rainDrops.length < 22) {
+        rainDrops.push({ x: Math.random() * W, y: -5, l: 8 + Math.random() * 6 });
+      }
+      ctx.strokeStyle = '#6FA8DC';
+      ctx.lineWidth = 2;
+      for (const d of rainDrops) {
+        ctx.beginPath();
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x - 3, d.y + d.l);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function cloud(cx, cy) {
+    ctx.beginPath();
+    ctx.arc(cx - 12, cy + 2, 9, 0, 7);
+    ctx.arc(cx, cy - 4, 11, 0, 7);
+    ctx.arc(cx + 13, cy + 2, 9, 0, 7);
+    ctx.fill();
+    ctx.fillRect(cx - 20, cy + 2, 40, 9);
+  }
+
+  function drawGameOver() {
+    ctx.fillStyle = COLORS.navy;
+    ctx.font = 'bold 20px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText('VOLET BLOQUÉ !', W / 2, H / 2 - 12);
+    ctx.font = '13px Segoe UI';
+    ctx.fillText('Espace / Clic pour rejouer', W / 2, H / 2 + 12);
+    ctx.font = '12px Segoe UI';
+    ctx.fillStyle = COLORS.greenDark;
+    ctx.fillText("Un vrai souci de volet ? Répar'Stores répare ça.", W / 2, H / 2 + 34);
+    ctx.textAlign = 'left';
+  }
+
+  function drawStart() {
+    ctx.fillStyle = COLORS.navy;
+    ctx.font = 'bold 16px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText('Espace / Clic pour commencer', W / 2, H / 2);
+    ctx.textAlign = 'left';
+  }
+
+  function update(dt) {
+    if (!running) return;
+
+    elapsed += dt;
+    speed = baseSpeed + Math.min(elapsed / 50000, 1) * 0.35;
+    score += dt * 0.01;
+
+    if (!tech.grounded) {
+      tech.dy += tech.gravity * dt;
+      tech.y += tech.dy * dt;
+      if (tech.y >= GROUND_Y - tech.h) {
+        tech.y = GROUND_Y - tech.h;
+        tech.dy = 0;
+        tech.grounded = true;
+      }
+    }
+
+    spawnTimer += dt;
+    if (spawnTimer > nextSpawn) {
+      spawnObstacle();
+      spawnTimer = 0;
+      nextSpawn = 750 + Math.random() * 900 - Math.min(elapsed / 50000, 1) * 250;
+    }
+
+    const moveBy = speed * dt;
+    for (const o of obstacles) o.x -= moveBy;
+    obstacles = obstacles.filter(o => o.x + o.w > -10);
+
+    for (const d of rainDrops) d.y += 0.4 * dt;
+    rainDrops = rainDrops.filter(d => d.y < H);
+
+    const techBox = {
+      x: tech.x,
+      y: tech.ducking && tech.grounded ? tech.y + tech.h * 0.4 : tech.y,
+      w: tech.ducking && tech.grounded ? tech.w * 1.45 : tech.w,
+      h: tech.ducking && tech.grounded ? tech.h * 0.62 : tech.h
+    };
+    for (const o of obstacles) {
+      if (rectsOverlap(techBox, o)) { endGame(); break; }
+    }
+
+    weatherStage = Math.floor(score / 500) % 3;
+  }
+
+  function endGame() {
+    running = false;
+    gameOver = true;
+    const finalScore = Math.floor(score);
+    if (finalScore > best) {
+      best = finalScore;
+      try { localStorage.setItem('reparstores_best_score', String(best)); } catch (e) {}
+    }
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    const bgColors = ['#EAF6E6', '#E4E8EC', '#D8DDE3'];
+    ctx.fillStyle = bgColors[weatherStage];
+    ctx.fillRect(0, 0, W, H);
+
+    drawWeather();
+    drawGround((elapsed * speed * 0.06) | 0);
+    drawObstacles();
+    drawTechnician();
+
+    if (!running && !gameOver) drawStart();
+    if (gameOver) drawGameOver();
+
+    scoresEl.textContent = 'HI ' + String(best).padStart(4, '0') + '   ' + String(Math.floor(score)).padStart(4, '0');
+  }
+
+  function loop(t) {
+    if (!lastTime) lastTime = t;
+    const dt = Math.min(t - lastTime, 40);
+    lastTime = t;
+    update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  render();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

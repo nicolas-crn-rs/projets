@@ -3,66 +3,87 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Page de test</title>
+  <title>Projets</title>
   <style>
     :root {
       --rs-green: #3CD200;
       --rs-blue: #1D096E;
       --bg: #f5f7fa;
       --card: #ffffff;
-      --text: #1D096E;
       --muted: #5b5675;
-      --accent: #1D096E;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       background: var(--bg);
-      color: var(--text);
+      color: var(--rs-blue);
       font-family: Wotfard, Arial, sans-serif;
-      padding: 16px;
+      padding: 48px 16px;
     }
-    main {
+    header {
+      max-width: 880px;
+      margin: 0 auto 32px;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      padding-left: 14px;
+      border-left: 6px solid var(--rs-green);
+    }
+    header p { margin: 0; color: var(--muted); }
+    .grid {
+      max-width: 880px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    a.card {
+      display: block;
       background: var(--card);
-      max-width: 520px;
-      width: 100%;
-      padding: 40px 32px;
-      border-radius: 12px;
       border-top: 6px solid var(--rs-green);
-      box-shadow: 0 4px 24px rgba(29, 9, 110, 0.12);
-      text-align: center;
+      border-radius: 12px;
+      padding: 24px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 4px 24px rgba(29, 9, 110, 0.10);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    h1 { margin: 0 0 12px; font-size: 1.75rem; }
-    p { margin: 0 0 24px; color: var(--muted); line-height: 1.5; }
-    button {
-      background: var(--accent);
+    a.card:hover, a.card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(29, 9, 110, 0.18);
+      outline: none;
+    }
+    a.card h2 { margin: 0 0 8px; font-size: 1.25rem; }
+    a.card p { margin: 0 0 16px; color: var(--muted); line-height: 1.5; font-size: 0.95rem; }
+    .go {
+      display: inline-block;
+      background: var(--rs-blue);
       color: #fff;
-      border: 0;
       border-radius: 8px;
-      padding: 12px 24px;
-      font-size: 1rem;
-      cursor: pointer;
+      padding: 8px 16px;
+      font-size: 0.9rem;
     }
-    button:hover { background: var(--rs-green); color: var(--rs-blue); }
-    #date { margin-top: 24px; font-size: 0.875rem; color: var(--muted); }
+    a.card:hover .go, a.card:focus-visible .go { background: var(--rs-green); color: var(--rs-blue); }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Page de test</h1>
-    <p>Si vous lisez ce message, la mise en ligne a fonctionné.</p>
-    <button id="btn" type="button">Cliquer pour tester</button>
-    <div id="date"></div>
+  <header>
+    <h1>Projets</h1>
+    <p>Sélectionnez un projet pour l'ouvrir.</p>
+  </header>
+  <main class="grid">
+    <a class="card" href="projet-test/">
+      <h2>Projet test</h2>
+      <p>Page de test de mise en ligne aux couleurs Répar'stores.</p>
+      <span class="go">Ouvrir</span>
+    </a>
+    <a class="card" href="runner/">
+      <h2>Répar'Runner</h2>
+      <p>Mini-jeu de course : sautez par-dessus les volets bloqués.</p>
+      <span class="go">Ouvrir</span>
+    </a>
   </main>
-  <script>
-    document.getElementById("btn").addEventListener("click", function () {
-      document.getElementById("date").textContent =
-        "Test réussi le " + new Date().toLocaleString("fr-FR");
-    });
-  </script>
 </body>
 </html>

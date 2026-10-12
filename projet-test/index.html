@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page de test</title>
+  <style>
+    :root {
+      --rs-green: #3CD200;
+      --rs-blue: #1D096E;
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --text: #1D096E;
+      --muted: #5b5675;
+      --accent: #1D096E;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Wotfard, Arial, sans-serif;
+      padding: 16px;
+    }
+    main {
+      background: var(--card);
+      max-width: 520px;
+      width: 100%;
+      padding: 40px 32px;
+      border-radius: 12px;
+      border-top: 6px solid var(--rs-green);
+      box-shadow: 0 4px 24px rgba(29, 9, 110, 0.12);
+      text-align: center;
+    }
+    h1 { margin: 0 0 12px; font-size: 1.75rem; }
+    p { margin: 0 0 24px; color: var(--muted); line-height: 1.5; }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover { background: var(--rs-green); color: var(--rs-blue); }
+    #date { margin-top: 24px; font-size: 0.875rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Page de test</h1>
+    <p>Si vous lisez ce message, la mise en ligne a fonctionné.</p>
+    <button id="btn" type="button">Cliquer pour tester</button>
+    <div id="date"></div>
+  </main>
+  <script>
+    document.getElementById("btn").addEventListener("click", function () {
+      document.getElementById("date").textContent =
+        "Test réussi le " + new Date().toLocaleString("fr-FR");
+    });
+  </script>
+</body>
+</html>
