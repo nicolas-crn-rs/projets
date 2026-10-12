@@ -55,7 +55,8 @@
       gap: 20px;
     }
     a.card {
-      display: block;
+      display: flex;
+      flex-direction: column;
       background: var(--card);
       border-top: 6px solid var(--rs-green);
       border-radius: 12px;
@@ -74,6 +75,8 @@
     a.card p { margin: 0 0 16px; color: var(--muted); line-height: 1.5; font-size: 0.95rem; }
     .go {
       display: inline-block;
+      align-self: flex-end;
+      margin-top: auto;
       background: var(--rs-blue);
       color: #fff;
       border-radius: 8px;
