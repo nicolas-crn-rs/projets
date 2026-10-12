@@ -27,6 +27,15 @@
       font-family: Wotfard, Arial, sans-serif;
       padding: 16px;
     }
+    .wrap { max-width: 520px; width: 100%; }
+    .back {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--rs-blue);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back:hover { text-decoration: underline; }
     main {
       background: var(--card);
       max-width: 520px;
@@ -53,12 +62,15 @@
   </style>
 </head>
 <body>
-  <main>
-    <h1>Page de test</h1>
-    <p>Si vous lisez ce message, la mise en ligne a fonctionné.</p>
-    <button id="btn" type="button">Cliquer pour tester</button>
-    <div id="date"></div>
-  </main>
+  <div class="wrap">
+    <a class="back" href="../">&larr; Retour aux projets</a>
+    <main>
+      <h1>Page de test</h1>
+      <p>Si vous lisez ce message, la mise en ligne a fonctionné.</p>
+      <button id="btn" type="button">Cliquer pour tester</button>
+      <div id="date"></div>
+    </main>
+  </div>
   <script>
     document.getElementById("btn").addEventListener("click", function () {
       document.getElementById("date").textContent =
