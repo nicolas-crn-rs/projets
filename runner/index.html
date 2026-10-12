@@ -6,68 +6,77 @@
 <title>Répar'Runner</title>
 <style>
   :root {
-    --navy: #1D096E;
-    --green: #3CD200;
-    --ground: #1D096E;
-    --text: #1D096E;
+    --rs-green: #3CD200;
+    --rs-green-dark: #2E9E00;
+    --rs-blue: #1D096E;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --muted: #5b5675;
   }
   * { box-sizing: border-box; }
-  html, body {
+  body {
     margin: 0;
-    height: 100%;
-    background: #F4FBF2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    overflow: hidden;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--rs-blue);
+    font-family: Wotfard, Arial, sans-serif;
+    padding: 24px 16px 48px;
   }
-  #wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
+  .back {
+    display: inline-block;
+    margin-bottom: 16px;
+    color: var(--rs-blue);
+    text-decoration: none;
+    font-size: 0.9rem;
   }
+  .back:hover { text-decoration: underline; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  main {
+    background: var(--card);
+    border-top: 6px solid var(--rs-green);
+    border-radius: 12px;
+    padding: 28px 24px;
+    box-shadow: 0 4px 24px rgba(29, 9, 110, 0.12);
+    text-align: center;
+  }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  .sub { margin: 0 0 16px; color: var(--muted); font-size: 0.95rem; }
   #hud {
-    width: 640px;
-    max-width: 90vw;
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    color: var(--text);
+    justify-content: flex-end;
+    margin-bottom: 8px;
     font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.5px;
     user-select: none;
   }
-  #hud .brand {
-    color: var(--green);
-    font-weight: 800;
-  }
   canvas {
+    display: block;
+    width: 100%;
+    height: auto;
     background: #EAF6E6;
-    border-bottom: 3px solid var(--navy);
+    border-bottom: 3px solid var(--rs-blue);
     border-radius: 6px;
-    max-width: 90vw;
     touch-action: manipulation;
   }
   #hint {
-    color: var(--text);
-    opacity: 0.65;
-    font-size: 12px;
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 0.85rem;
     user-select: none;
-    text-align: center;
   }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="hud">
-    <span class="brand">Répar'Runner</span>
-    <span id="scores">HI 0000 &nbsp; 0000</span>
-  </div>
-  <canvas id="game" width="640" height="220"></canvas>
-  <div id="hint">Espace / Clic pour sauter — flèche bas pour se baisser</div>
+<div class="wrap">
+  <a class="back" href="../">&larr; Retour aux projets</a>
+  <main>
+    <h1>Répar'Runner</h1>
+    <p class="sub">Sautez par-dessus les volets bloqués.</p>
+    <div id="hud"><span id="scores">HI 0000 &nbsp; 0000</span></div>
+    <canvas id="game" width="640" height="220"></canvas>
+    <div id="hint">Espace / Clic pour sauter — flèche bas pour se baisser</div>
+  </main>
 </div>
 
 <script>
@@ -512,12 +521,12 @@
 
   function drawGameOver() {
     ctx.fillStyle = COLORS.navy;
-    ctx.font = 'bold 20px Segoe UI';
+    ctx.font = 'bold 20px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('VOLET BLOQUÉ !', W / 2, H / 2 - 12);
-    ctx.font = '13px Segoe UI';
+    ctx.font = '13px Arial';
     ctx.fillText('Espace / Clic pour rejouer', W / 2, H / 2 + 12);
-    ctx.font = '12px Segoe UI';
+    ctx.font = '12px Arial';
     ctx.fillStyle = COLORS.greenDark;
     ctx.fillText("Un vrai souci de volet ? Répar'Stores répare ça.", W / 2, H / 2 + 34);
     ctx.textAlign = 'left';
@@ -525,7 +534,7 @@
 
   function drawStart() {
     ctx.fillStyle = COLORS.navy;
-    ctx.font = 'bold 16px Segoe UI';
+    ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('Espace / Clic pour commencer', W / 2, H / 2);
     ctx.textAlign = 'left';
