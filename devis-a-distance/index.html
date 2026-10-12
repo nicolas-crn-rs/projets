@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="../auth.js"></script>
+  <title>Devis à distance</title>
+  <style>
+    :root {
+      --rs-green: #3CD200;
+      --rs-blue: #1D096E;
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --muted: #5b5675;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--rs-blue);
+      font-family: Wotfard, Arial, sans-serif;
+      padding: 24px 16px 48px;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    .back {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--rs-blue);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back:hover { text-decoration: underline; }
+    header { margin-bottom: 32px; }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      padding-left: 14px;
+      border-left: 6px solid var(--rs-green);
+    }
+    header p { margin: 0; color: var(--muted); }
+    section { margin-bottom: 32px; }
+    section h2 {
+      margin: 0 0 16px;
+      font-size: 1.15rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    a.card {
+      display: flex;
+      flex-direction: column;
+      background: var(--card);
+      border-top: 6px solid var(--rs-green);
+      border-radius: 12px;
+      padding: 24px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 4px 24px rgba(29, 9, 110, 0.10);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    a.card:hover, a.card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(29, 9, 110, 0.18);
+      outline: none;
+    }
+    a.card h3 { margin: 0 0 8px; font-size: 1.25rem; }
+    a.card p { margin: 0 0 16px; color: var(--muted); line-height: 1.5; font-size: 0.95rem; }
+    .go {
+      display: inline-block;
+      align-self: flex-end;
+      margin-top: auto;
+      background: var(--rs-blue);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+    }
+    a.card:hover .go, a.card:focus-visible .go { background: var(--rs-green); color: var(--rs-blue); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="../">&larr; Retour aux projets</a>
+    <header>
+      <h1>Devis à distance</h1>
+      <p>Choisissez une catégorie pour accéder aux outils du projet.</p>
+    </header>
+
+    <section aria-labelledby="cat-contacter">
+      <h2 id="cat-contacter">Contacter les franchisés</h2>
+      <div class="grid">
+        <a class="card" href="contacter-les-franchises/">
+          <h3>Fiche d'appel franchisés</h3>
+          <p>Suivi des appels, questionnaire, synthèse des réponses et export vers Excel.</p>
+          <span class="go">Ouvrir</span>
+        </a>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
